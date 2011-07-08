@@ -4,6 +4,8 @@
 
 > **Install**: <http://go.wittman.org/axdz>
 
+> _Discussion_: <https://plus.google.com/111309687695898923996/posts/Hq4Jxayt782>
+
 So far, this user script was tested in Google Chrome 12 and Firefox 5 (Greasemonkey required) (on OS X).
 
 Feedback is welcome.
