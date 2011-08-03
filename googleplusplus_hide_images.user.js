@@ -4,10 +4,10 @@
 // @namespace      http://wittman.org/projects/googleplusplus_hide_images
 // @include        *plus.google.com*
 // @description    Adds button under each Google Plus post image to hide it (toggle show / hide). Hides the image on original post and all shared posts. Tired of an animated GIF that keep getting shared over and over in different posts? - hide it once an forget about it.
-// @version        0.1.1
+// @version        0.1.4
 // ==/UserScript==
 
-function hideImages(){
+function hideImages(){ //v0.1.4
 	
 	/****** Utility functions ******/
 	function log(txt) {
@@ -341,12 +341,13 @@ function hideImages(){
 
 	/****** Before Loop Variables ******/
 	var i = 0;
-	var img_divs = $('#contentPane .a-b-f-S-oa div[data-content-url]');
+	var img_divs = $('#contentPane .P-I-ba[data-content-url]'); //NEW
 	
 	/****** Loop ******/
 	function main_loop(){
 		
-		img_divs = $('#contentPane .a-b-f-S-oa div[data-content-url]');
+		img_divs = $('#contentPane .P-I-ba[data-content-url]'); //NEW
+
 		img_count = img_divs.length;
 			
 		img_divs.each(function(){
@@ -357,7 +358,7 @@ function hideImages(){
 				//Process new images
 				url_hash = md5(img_url);
 				t.addClass('gpp__hide_images_tagged');
-				t.after('<div id="gpp__hide_images_button_' + i + '" style="height: 8px;width: 91%;" class="gpp__hide_images a-f-i-WXPuNd a-b-f-i-W-xb"><span role="button" class="d-h a-b-f-i-gc-cf-Xb-h" tabindex="0"><span style="margin-top:-5px" class="n-Wa-q n-Wa-q-z" title="Hidden image"></span><span style="font-size:9px;margin:0 0 0 4px;position:absolute"><a>SHOW / HIDE</a></span></span></div>');
+				t.after('<div id="gpp__hide_images_button_' + i + '" style="height: 8px;width: 91%;" class="gpp__hide_images Lt Lq"><span role="button" tabindex="0"><span style="margin-top:-5px" class="h-ta-p h-ta-p-y" title="Hidden image"></span><span style="font-size:9px;margin:0 0 0 4px;position:absolute"><a>SHOW / HIDE</a></span></span></div>');
 				var img = t;
 				var button = img.parent().find('#gpp__hide_images_button_' + i + ':first');
 				button.click(function(){
@@ -375,16 +376,22 @@ function hideImages(){
 			}else{
 				//Process existing images
 				if( t.is(':visible') ){
-					url_hash = md5(img_url);
-					var hidden_img_url = GM_getValue('gpp__hidden_img_url_' + url_hash, false);
-					if(hidden_img_url){
-						t.hide();
+					if(hide_images_by_default){
+						if(!t.hasClass('gpp__hide_images_tagged_shown')){
+							t.addClass('gpp__hide_images_tagged_shown');
+							t.hide();
+						}
+					}else{
+						url_hash = md5(img_url);
+						var hidden_img_url = GM_getValue('gpp__hidden_img_url_' + url_hash, false);
+						if(hidden_img_url){
+							t.hide();
+						}
 					}
 				}
 			}
 			
 		});
-		
 	}
 	
 	/****** Start Loop ******/
