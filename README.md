@@ -10,6 +10,10 @@ So far, this userscript / extension was tested on Google Chrome 12 and Firefox 5
 
 ## Change Log
 
+### Version 0.1.5
+
+- Changes made by Google recently introduced breaking DOM tree changes. Critical update needed. FIX
+
 ### Version 0.1.4
 
 - Changes made today by Google introduced breaking DOM tree changes. All modules needed updating and are now fixed. FIX
