@@ -4,10 +4,12 @@
 // @namespace      http://wittman.org/projects/googleplusplus_hide_images
 // @include        *plus.google.com*
 // @description    Adds button under each Google Plus post image to hide it (toggle show / hide). Hides the image on original post and all shared posts. Tired of an animated GIF that keep getting shared over and over in different posts? - hide it once an forget about it.
-// @version        0.1.5
+// @version        0.1.9
 // ==/UserScript==
 
-function hideImages(){ // v0.1.5
+function hideImages(){
+	var hide_images_by_default = false;
+	var logging = false;
 	
 	/****** Utility functions ******/
 	function log(txt) {
@@ -15,6 +17,249 @@ function hideImages(){ // v0.1.5
 			 console.log(txt);
 		}
 	}
+	function re_map(mappings){
+		if(mappings == null)
+			return false; //Scripts without a default (bundled) mapping resource
+		var m = mappings;
+		SEL = {
+			'post' : "[id^='update-']", //"[id^='update-']"
+			'posts' : m['XVDd7kiawTA9Z68I'], //".tn"
+			'comments_wrap' : m['nqBp6N6dKqueig2R'], //".Ij"
+			'comment_editor_cancel' : "[id*='.cancel']", //[id*='.cancel']
+			'plust1_and_comments_link_wrap' : m['YAnwDHrlMoy67el9'], //".Bl"
+			'old_comment_count_span' : m['9Iug6cv5o3NgTEEv'], //".Gw"
+			'recent_comments_wrap' : m['CgYb1dbCZGVfpUAj'], //'.mf'
+			'circle_links_wrap' : '#content ' + m['tZ7bxNTZEoVrcPyj'] + ' + div', //"#content .a-ud-B + div"		
+			'circle_links' : "#content " + m['NCQTv2BvLd3MFT9q'].replace(':hover','') + " a[href*='stream/']", //"#content .a-ob-j-X a[href*='stream/']"
+			'stream_link' : "#content " + m['XLINtDfuUFUIgeVl'] + " + a[href='/stream']:first", //"#content .a-ob-Fd a[href='/stream']:first"
+			'stream_link_active' : "#content " + m['XLINtDfuUFUIgeVl'] + " + a[href='/stream']" + m['oL8HuLz0SCCVwtPK'] + ":first", //"#content .a-f-ob-B a[href='/stream'].a-ob-j-ia:first"
+			'user_link' : m['tuVm7xq63YKbjl9u'] + ' a:first', //'.Nw a:first'
+			'share_link' : m['xG7OYDQoYoP4QS0R'] + ' a:first', //'.gx a:first'
+			'permalink_wrap' : m['tuVm7xq63YKbjl9u'], //'.Nw',
+			'img_divs' :  "#content " + m['rWCWLOSJ4yQRU41j'] + "[data-content-url]", //#contentPane .F-y-Ia[data-content-url]
+			'search_input_classes' : m['ikY6QG1yVApfM0ib'].replace('.','') + ' ' + m['9WbMI68ODRm5sxgV'].replace('.','') + ' ' + m['QvnLjkPdyzwsVmEq'].replace('.',''), //'a-pu-z a-x-z Ka-z-Ka'
+			'___' : ''
+		};
+	}
+
+	function set_selector_mappings(){
+		
+		/*** Scripts without a default (bundled) mapping resource ***/
+		var default_selector_map = {
+			'mapping date right' : '0000-00-00.000',
+			'mappings' : null
+			};
+		/***********************************************************/
+		
+		var mappings = {};
+		try{
+			//console.log(SEL);
+			/*stor_del('GPlus CSS Map');
+			stor_del('Last Got GPlus CSS Map Date');
+			stor_del('GPlus CSS Map Date');
+			return;*/
+
+			//var now = new Date("August 25, 2011 22:27:00"); //new Date();
+			var now = new Date();
+
+			var stored_mappings;
+			var stored_last_check_for_map_update;
+			var stored_map_date;
+
+			//Check for resume flag
+			var uncheckable_dom_litmus_location = false;
+			var path = window.location.pathname;
+			if( path !=  '/' && path.indexOf('/stream/') == -1 && path.indexOf('/posts') == -1 ){
+				uncheckable_dom_litmus_location = true;
+			}
+
+			//Set mappings if first time upon page load
+			if( !SET_SELECTOR_MAPPINGS_DONE_ONCE ){
+				stored_mappings = $.parseJSON(stor_get('GPlus CSS Map', null));
+				stored_last_check_for_map_update = stor_get('Last Got GPlus CSS Map Date', 0);
+				stored_map_date = stor_get('GPlus CSS Map Date', '');
+
+				//User stored mapping if newer than default mappings
+				if((stored_last_check_for_map_update != 0) && (stored_mappings) && (stored_map_date > default_selector_map['mapping date right'])){
+					mappings = stored_mappings; //local storage copy of map
+					default_selector_map['mapping date right'] = stored_map_date; //Scripts without a default (bundled) mapping resource
+				}else{
+					mappings = default_selector_map.mappings; //included default map file
+				}
+
+				//console.log('mappings_before_remap:');
+				//console.log(default_selector_map.mappings);
+				re_map(mappings);
+				//console.log(SEL);
+			}else{
+				SET_SELECTOR_MAPPINGS_DONE_ONCE = true; //done once, set flag
+			}
+
+			//Check if resume mode is needed
+			if(uncheckable_dom_litmus_location){
+				RESUME_MAP_CHECK_UPON_ROOT_PATH = true; //flag to re-run when at root URL
+				return;
+			}
+
+			RESUME_MAP_CHECK_UPON_ROOT_PATH = false; //unset flag
+
+			//Check remote mappings in case of update
+			var timediff = now.getTime() - stored_last_check_for_map_update;
+			//console.log('timediff:');
+			//console.log(timediff/60*1000*60);
+			//console.log('stored_last:');
+			//console.log(stored_last_check_for_map_update);
+			//console.log('stored_map:');
+			//console.log(stored_map_date + ' and ' + stored_map_date);
+			//console.log('stored_last:' + stored_last_check_for_map_update); console.log('timediff:' + (timediff > 30*60*1000)); console.log('force:' + SET_SELECTOR_MAPPINGS_FORCED);
+			if((default_selector_map.mappings == null) || (stored_last_check_for_map_update == 0) || (timediff > 30*60*1000) || (SET_SELECTOR_MAPPINGS_FORCED)){ /* 30*60*1000 = 0.5 hour interval*/
+				SET_SELECTOR_MAPPINGS_FORCED = false; //unset flag
+				//console.log('past interval');
+				$.get('http://goldenview.wittman.org/map/current_gplus_mappings_timestamp.txt', function(data){
+					//console.log(data);
+					var remote_date = data;
+					if((remote_date.length > 8 && remote_date.length < 16 && remote_date[0] == 2) && (remote_date > default_selector_map['mapping date right'])){ //2010-01-01.123
+						$.getJSON('http://goldenview.wittman.org/map/current_gplus_mappings.json', function(data){
+							//console.log('ajax map pull:'); console.log(data);
+							var date_right = typeof data['mapping date right'] == 'undefined' ? default_selector_map['mapping date right'] : data['mapping date right'];	
+							var mappings_length = Object.keys(data.mappings).length;
+							//console.log('date_right, default_date');
+							//console.log(date_right); console.log(default_selector_map['mapping date right']);
+							if(date_right > default_selector_map['mapping date right'] && mappings_length > 999 && (!$(SEL.posts).length || !$(SEL.comments_wrap).length || !$(SEL.circle_links).length)){
+								mappings = data.mappings;
+								re_map(mappings);
+								stor_set('GPlus CSS Map', JSON.stringify(mappings));
+								stor_set('GPlus CSS Map Date', date_right);
+								//console.log('update local from remote');
+								//console.log(mappings);
+							}
+						});
+					}
+				});
+				stor_set('Last Got GPlus CSS Map Date', now.getTime());
+				//console.log('stored:'+now.getTime());
+			}
+			//console.log(mappings);
+		}catch(e){
+			SET_SELECTOR_MAPPINGS_DONE_ONCE = true; //done once, set flag
+			////mappings = default_selector_map.mappings; //If all else fails, use included default map file
+			////re_map(mappings);
+			//console.log('exception caught, using default');
+			//console.log('Remote map not pulled yet.')
+			//console.log(e.message);
+			//console.log(mappings);
+		}
+	}
+	
+	function setItem(key, value) {
+		try{
+			log("Inside setItem: " + key + ":" + value);
+			window.localStorage.removeItem(key);
+			window.localStorage.setItem(key, value);
+		}catch(e){
+			log("Error inside setItem");
+			log(e);
+		}
+		log("Return from setItem" + key + ":" +  value);
+	}
+
+	function getItem(key){
+		var v;
+		log('Get Item: ' + key);
+		try{
+			v = window.localStorage.getItem(key);
+		}catch(e){
+			log("Error inside getItem() for key: " + key);
+			log(e);
+			v = null;
+		}
+		log("Returning value: " + v);
+		return v;
+	}
+	function removeItem(key) {
+		try{
+			log("Inside removetItem: " + key);
+			window.localStorage.removeItem(key);
+		}catch(e){
+			log("Error inside removeItem");
+			log(e);
+		}
+		log("Return from removeItem" + key);
+	}
+	function clearStorage(){
+		log('about to clear local storage');
+		window.localStorage.clear();
+		log('cleared');
+	}
+	function GM_removeItem(name){
+		removeItem(name);
+	}
+	function GM_setValue(name, value){
+		setItem(name, value);
+	}
+
+	function GM_getValue(name, oDefault){
+		var v = getItem(name);
+		if(v == null){
+			return oDefault;
+		}else{
+			return v;
+		}
+	}
+	function set_item(key, value) {
+		try{
+			window.localStorage.removeItem(key);
+			window.localStorage.setItem(key, value);
+		}catch(e){
+			log(e);
+		}
+	}
+
+	function get_item(key){
+		var v;
+		try{
+			v = window.localStorage.getItem(key);
+		}catch(e){
+			log(e);
+			v = null;
+		}
+		return v;
+	}
+	function del_item(key) {
+		try{
+			window.localStorage.removeItem(key);
+		}catch(e){
+			log(e);
+		}
+		log("Return from removeItem" + key);
+	}
+	function stor_clear(){
+		log('about to clear local storage');
+		window.localStorage.clear();
+		log('cleared');
+	}
+	function stor_del(name){
+		del_item(name);
+	}
+	function stor_set(name, value){
+		set_item(name, value);
+	}
+	function stor_get(name, dfault){
+		var v = get_item(name);
+		if(v == null){
+			return dfault;
+		}else{
+			return v;
+		}
+	}
+	
+	var SEL = {};
+	var RESUME_MAP_CHECK_UPON_ROOT_PATH = false;
+	var SET_SELECTOR_MAPPINGS_DONE_ONCE = false;
+	var SET_SELECTOR_MAPPINGS_FORCED = false;
+	var SET_SELECTOR_MAPPINGS_FORCED_ONCE = false;
+
+	set_selector_mappings();
 
 	/*
 	* Add integers, wrapping at 2^32. This uses 16-bit operations internally
@@ -275,79 +520,25 @@ function hideImages(){ // v0.1.5
 			return raw_hmac_md5(key, string);
 		}
 	}
-	function setItem(key, value) {
-		try{
-			log("Inside setItem: " + key + ":" + value);
-			window.localStorage.removeItem(key);
-			window.localStorage.setItem(key, value);
-		}catch(e){
-			log("Error inside setItem");
-			log(e);
-		}
-		log("Return from setItem" + key + ":" +  value);
-	}
-
-	function getItem(key){
-		var v;
-		log('Get Item: ' + key);
-		try{
-			v = window.localStorage.getItem(key);
-		}catch(e){
-			log("Error inside getItem() for key: " + key);
-			log(e);
-			v = null;
-		}
-		log("Returning value: " + v);
-		return v;
-	}
-	function removeItem(key) {
-		try{
-			log("Inside removetItem: " + key);
-			window.localStorage.removeItem(key);
-		}catch(e){
-			log("Error inside removeItem");
-			log(e);
-		}
-		log("Return from removeItem" + key);
-	}
-	function clearStorage(){
-		log('about to clear local storage');
-		window.localStorage.clear();
-		log('cleared');
-	}
-	function GM_removeItem(name){
-		removeItem(name);
-	}
-	function GM_setValue(name, value){
-		setItem(name, value);
-	}
-
-	function GM_getValue(name, oDefault){
-		var v = getItem(name);
-		if(v == null){
-			return oDefault;
-		}else{
-			return v;
-		}
-	}
 
 	/****** Helper functions ******/
 	function isThumbnail(img){
-		return (img.height() == 46);
+		return (img.height() <= 62 || img.width() <= 62);
 	}
-
-	/****** Constants ******/
-	var logging = false;
 
 	/****** Before Loop Variables ******/
 	var i = 0;
 	//var img_divs = $('#contentPane .P-I-ba[data-content-url]'); //OLD
-	var img_divs = $('#contentPane .O-F-X[data-content-url]'); //NEW
+	//var img_divs = $('#contentPane .O-F-X[data-content-url]'); //OLD
+	//var img_divs = $('#contentPane .H-y-qa[data-content-url]'); //OLD
+    var img_divs = $(SEL.img_divs); //$('#contentPane .F-y-Ia[data-content-url]'); //NEW
 	
 	/****** Loop ******/
 	function main_loop(){
 		
-		img_divs = $('#contentPane .O-F-X[data-content-url]'); //NEW
+		//img_divs = $('#contentPane .O-F-X[data-content-url]'); //OLD
+		//img_divs = $('#contentPane .H-y-qa[data-content-url]'); //OLD
+        img_divs = $(SEL.img_divs); //$('#contentPane .F-y-Ia[data-content-url]'); //NEW
 
 		img_count = img_divs.length;
 			
@@ -359,9 +550,17 @@ function hideImages(){ // v0.1.5
 				//Process new images
 				url_hash = md5(img_url);
 				t.addClass('gpp__hide_images_tagged');
-				t.after('<div id="gpp__hide_images_button_' + i + '" style="margin:7px 9px; height: 5px;width: 91%;" class="gpp__hide_images Ah Ft h-na-o-z"><span role="button" tabindex="0"><span style="margin-top:-5px" class="" title="Hidden image"></span><span style="font-size:9px; margin:-3px 0 0 20px;position:absolute"><a>SHOW / HIDE</a></span></span></div>'); //NEW
+				//t.after('<div id="gpp__hide_images_button_' + i + '" style="margin:7px 9px; height: 5px;width: 91%;" class="gpp__hide_images Ah Ft h-na-o-z"><span role="button" tabindex="0"><span style="margin-top:-5px" class="" title="Hidden image"></span><span style="font-size:9px; margin:-3px 0 0 20px;position:absolute"><a>SHOW / HIDE</a></span></span></div>'); //OLD
+				//t.after('<div id="gpp__hide_images_button_' + i + '" style="margin:7px 9px; height:auto;width: 91%;background-position-y:-201px;float:left" class="gpp__hide_images ns yx Fv h-ga-o-v"><span role="button" tabindex="0"><span style="margin-top:-5px" class="" title="Hidden image"></span><span style="font-size:9px; margin:-5px 0 0 22px;position:absolute"><a>SHOW / HIDE</a></span></span></div>'); //OLD
+				t.after('<div id="gpp__hide_images_button_' + i + '" style="background:url(' + ICON_CAMERA + ') no-repeat; margin:7px 9px; height:auto;width: 91%;background-position-y:0px; height:1.2em; float:left;background-color:whiteSmoke" class="gpp__hide_images"><span role="button" tabindex="0"><span style="margin-top:0px" class="" title="Hidden image"></span><span style="font-size:9px; padding-top:2px; margin:0px 0 0 22px;position:absolute"><a>SHOW / HIDE</a></span></span></div>'); //NEW Lr9 Hw i-wa-m-v
 				var img = t;
 				var button = img.parent().find('#gpp__hide_images_button_' + i + ':first');
+				button.hover(function(){
+					$(this).css('background-color', 'rgb(225,225,225)');
+				},
+				function(){
+					$(this).css('background-color', 'whiteSmoke');
+				});
 				button.click(function(){
 					if( img.is(':visible') ){
 						//Hide
@@ -377,16 +576,27 @@ function hideImages(){ // v0.1.5
 			}else{
 				//Process existing images
 				if( t.is(':visible') ){
-					url_hash = md5(img_url);
-					var hidden_img_url = GM_getValue('gpp__hidden_img_url_' + url_hash, false);
-					if(hidden_img_url){
-						t.hide();
+					if(hide_images_by_default){
+						if(!t.hasClass('gpp__hide_images_tagged_shown')){
+							t.addClass('gpp__hide_images_tagged_shown');
+							t.hide();
+						}
+					}else{
+						url_hash = md5(img_url);
+						var hidden_img_url = GM_getValue('gpp__hidden_img_url_' + url_hash, false);
+						if(hidden_img_url){
+							t.hide();
+						}
 					}
 				}
 			}
 			
 		});
 	}
+	
+	
+	var ICON_CAMERA = 'data:image/png;base64,' + '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';
+	
 	
 	/****** Start Loop ******/
 	main_loop();

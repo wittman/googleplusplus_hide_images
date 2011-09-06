@@ -10,6 +10,10 @@ So far, this userscript / extension was tested on Google Chrome 12 and Firefox 5
 
 ## Change Log
 
+### Version 0.1.9
+
+- Critical update needed to work with current state of Google+. Auto-healing (updating for CSS map) implemented. FIX
+
 ### Version 0.1.5
 
 - Changes made by Google recently introduced breaking DOM tree changes. Critical update needed. FIX
